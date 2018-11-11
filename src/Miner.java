@@ -18,8 +18,8 @@ public class Miner extends Thread {
 	 */
 
 	public static AtomicInteger hashCount;
-	public static ConcurrentHashMap<Integer, Object> solved;
-	public static CommunicationChannel channel;
+	public static ConcurrentHashMap<Integer, Object> solved = new ConcurrentHashMap<>();
+	public static CommunicationChannel channel = new CommunicationChannel();
 
 	public Miner(Integer newHashCount, Set<Integer> newSolved, CommunicationChannel newChannel) {
 		channel = newChannel;
