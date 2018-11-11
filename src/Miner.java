@@ -47,18 +47,22 @@ public class Miner extends Thread {
 		// as long as it is not the exit message
 		Message messageFromWizard = channel.getMessageWizardChannel();
 		
-		while (msmgFromWizard.getData() != "EXIT") {
-			// read the data to be mined from the message
-			String data = msgFromWizard.getData();
-			// mine it
-			String dataForWizard = encryptMultipleTimes(data, hashCount.get());
-
-			// after finishing mining, mark the room as finished
-			solved.putIfAbsent(messageFromWizard.getCurrentRoom(), new Object());
-			// and notify the wizard
-			Message messageToWizard = new Message(messageFromWizard.getCurrentRoom(), dataForWizard);
-			channel.putMessageMinerChannel(messageToWizard);
-
+		while (messageFromWizard.getData() != "EXIT") {
+			// get data inside the message
+			String dataFromWizard = messageFromWizard.getData();
+			Integer parentRoom = messageFromWizard.getParentRoom();
+			Integer currentRoom = messageFromWizard.getCurrentRoom();
+			
+			// mine the data
+			String dataForWizard = encryptMultipleTimes(dataFromWizard, hashCount.get());
+			// build new message for the wizard
+			Message messageToWizard = new Message(
+										parentRoom,
+										currentRoom,
+										dataForWizard
+									);
+			// mark room as solved (TODO: figure out why)
+			solved.putIfAbsent(currentRoom, new Object());
 			// at the end, get a new message from the wizard
 			messageFromWizard = channel.getMessageWizardChannel();
 		}
