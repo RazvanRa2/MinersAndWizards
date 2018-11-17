@@ -24,6 +24,7 @@ public class CommunicationChannel {
 	 *            message to be put on the channel
 	 */
 	public void putMessageMinerChannel(Message message) {
+		System.out.println("minner channel: " + message.getData() + "\t" + message.getCurrentRoom() + "\t" + message.getParentRoom());
 		minerChannel.add(message);
 	}
 
@@ -34,16 +35,12 @@ public class CommunicationChannel {
 	 * @return message from the miner channel
 	 */
 	public Message getMessageMinerChannel() {
-		// wait until there is a message on the channel
-		while (minerChannel.isEmpty()) {
-			try {
-				this.wait();
-			} catch (Exception ex) {
-				System.out.println(ex);
-			}
-		}
-		// and when there is at least one, serve it
-		return minerChannel.poll();
+		Message messageFromMiners = null;
+		do {
+			messageFromMiners = minerChannel.poll();
+		} while (messageFromMiners == null);
+
+		return messageFromMiners;
 	}
 
 	/**
@@ -54,6 +51,7 @@ public class CommunicationChannel {
 	 *            message to be put on the channel
 	 */
 	public void putMessageWizardChannel(Message message) {
+		System.out.println("wizard channel: " + message.getData());
 		wizardChannel.add(message);
 	}
 
@@ -64,15 +62,11 @@ public class CommunicationChannel {
 	 * @return message from the miner channel
 	 */
 	public Message getMessageWizardChannel() {
-		// wait until there is at least one message on the channel
-		while (wizardChannel.isEmpty()) {
-			try {
-				this.wait();
-			} catch (Exception ex) {
-				System.out.println();
-			}
-		}
-		// and then serve it
-		return wizardChannel.poll();
+		Message messageFromWizards = null;
+		do {
+			messageFromWizards = wizardChannel.poll();
+		} while (messageFromWizards == null);
+
+		return messageFromWizards;
 	}
 }
