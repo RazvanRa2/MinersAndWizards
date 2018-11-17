@@ -34,6 +34,7 @@ public class CommunicationChannel {
 	 * @return message from the miner channel
 	 */
 	public Message getMessageMinerChannel() {
+		// wait until there is a message on the channel
 		while (minerChannel.isEmpty()) {
 			try {
 				this.wait();
@@ -41,7 +42,7 @@ public class CommunicationChannel {
 				System.out.println(ex);
 			}
 		}
-
+		// and when there is at least one, serve it
 		return minerChannel.poll();
 	}
 
@@ -63,6 +64,7 @@ public class CommunicationChannel {
 	 * @return message from the miner channel
 	 */
 	public Message getMessageWizardChannel() {
+		// wait until there is at least one message on the channel
 		while (wizardChannel.isEmpty()) {
 			try {
 				this.wait();
@@ -70,7 +72,7 @@ public class CommunicationChannel {
 				System.out.println();
 			}
 		}
-
+		// and then serve it
 		return wizardChannel.poll();
 	}
 }
