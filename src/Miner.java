@@ -103,22 +103,28 @@ public class Miner extends Thread {
 			// read child room after reading parent room
 			messageFromWizards = channel.getMessageWizardChannel();
 			System.out.println("READ ROOM");
-
-			int childRoomNo = messageFromWizards.getCurrentRoom();
-			String crypticMessage = messageFromWizards.getData();
-
-			String decryptedMessage = encryptMultipleTimes(crypticMessage,
-			 							hashCount.get());
-
-			// build answer for the mighty wizards
-			Message messageToWizards = new Message(parentRoomNo, childRoomNo,
-										decryptedMessage);
-
-			// tell Dumbledore
-			channel.putMessageMinerChannel(messageToWizards);
-
 			// release semaphore asap
 			minerSemaphore.release();
+
+			int childRoomNo = messageFromWizards.getCurrentRoom();
+
+			// check previously solved room
+			if (!solved.containsKey(childRoomNo)) {
+				String crypticMessage = messageFromWizards.getData();
+
+				String decryptedMessage = encryptMultipleTimes(crypticMessage,
+				 							hashCount.get());
+
+				// build answer for the mighty wizards
+				Message messageToWizards = new Message(parentRoomNo, childRoomNo,
+											decryptedMessage);
+
+				// mark room as solved
+				solved.put(childRoomNo, new Object());
+
+				// tell Dumbledore
+				channel.putMessageMinerChannel(messageToWizards);
+			}
 		}
 	}
 
