@@ -2,6 +2,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.*;
 import java.util.LinkedList;
 import java.lang.*;
+import java.util.concurrent.Semaphore;
 
 /**
  * Class that implements the channel used by wizards and miners to communicate.
@@ -14,13 +15,17 @@ public class CommunicationChannel {
 	ConcurrentLinkedQueue<Message> minerChannel;
 	ConcurrentLinkedQueue<Message> wizardChannel;
 
-	ConcurrentHashMap<Integer, LinkedList<Message>> wizardMessages;
-
+	static ConcurrentHashMap<Integer, LinkedList<Message>> wizardMessages;
+	static Semaphore wizardChannelSemaphore;
+	static long lastThread;
 	public CommunicationChannel() {
 		minerChannel = new ConcurrentLinkedQueue<Message>();
 		wizardChannel = new ConcurrentLinkedQueue<Message>();
 
 		wizardMessages =  new ConcurrentHashMap<Integer, LinkedList<Message>>();
+		wizardChannelSemaphore = new Semaphore(1);
+
+		lastThread = -1;
 	}
 
 	/**
@@ -58,41 +63,28 @@ public class CommunicationChannel {
 	 *            message to be put on the channel
 	 */
 	public void putMessageWizardChannel(Message message) {
-		System.out.println("wizard channel: " + message.getData());
-
-		// if it's an exit message, we don't care. just put it there
-		if (message.getData() == Wizard.EXIT) {
-
-			wizardChannel.add(message);
-			return;
-		}
-
-		// get the wizard's id
-		int wizardId = (int) Thread.currentThread().getId();
-
-		// if it's an end message, add all the messages for this end message
-		if (message.getData() == Wizard.END) {
-			LinkedList<Message> wizardList = wizardMessages.get(wizardId);
-			wizardList.add(message);
-
-			synchronized (wizardChannel) {
-				wizardChannel.addAll(wizardList);
+		if (message.getData() != Wizard.EXIT
+		&& message.getData() != Wizard.END) {
+			long currentThread = Thread.currentThread().getId();
+			if (currentThread == lastThread || lastThread == -1) {
+				wizardChannel.add(message);
+				lastThread = -1;
+			} else {
+				try {
+					wizardChannelSemaphore.acquire();
+					wizardChannel.add(message);
+					lastThread = Thread.currentThread().getId();
+				} catch (Exception ex) {
+				}
+				wizardChannelSemaphore.release();
 			}
-
-			return;
-		}
-
-		// if it's a room message, add it to the stored messages
-		if (wizardMessages.containsKey(wizardId)) {
-			LinkedList<Message> wizardOldList = wizardMessages.get(wizardId);
-			@SuppressWarnings("unchecked")  // damn java warnings
-			LinkedList<Message> wizardNewList = (LinkedList<Message>) wizardOldList.clone();
-			wizardNewList.add(message);
-			wizardMessages.replace(wizardId, wizardOldList, wizardNewList);
 		} else {
-			LinkedList<Message> newWizardList = new LinkedList<Message>();
-			newWizardList.add(message);
-			wizardMessages.put(wizardId, newWizardList);
+			try {
+				wizardChannelSemaphore.acquire();
+			} catch (Exception ex) {
+			}
+			wizardChannel.add(message);
+			wizardChannelSemaphore.release();
 		}
 	}
 
