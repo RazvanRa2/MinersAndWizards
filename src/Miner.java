@@ -89,6 +89,11 @@ public class Miner extends Thread {
 			// get message
 			Message messageFromWizards = channel.getMessageWizardChannel();
 
+			// if it's null, tough luck miner, go wait again
+			if (messageFromWizards == null) {
+				continue;
+			}
+
 			// EXIT case -> thread (miner) should die
 			if (messageFromWizards.getData() == Wizard.EXIT) {
 				System.out.println("READ EXIT");
