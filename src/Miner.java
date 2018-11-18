@@ -64,7 +64,8 @@ public class Miner extends Thread {
         }
     }
 
-	public Miner(Integer newHashCount, Set<Integer> newSolved, CommunicationChannel newChannel) {
+	public Miner(Integer newHashCount, Set<Integer> newSolved,
+	CommunicationChannel newChannel) {
 		channel = newChannel;
 		hashCount = new AtomicInteger((int)newHashCount);
 
@@ -81,6 +82,7 @@ public class Miner extends Thread {
 			} catch (Exception ex) {
 				System.out.println(ex);
 			}
+			// get the first message from wizards once semaphore is acquired
 			Message messageFromWizards = channel.getMessageWizardChannel();
 
 			// EXIT case -> thread (miner) should die
@@ -116,7 +118,8 @@ public class Miner extends Thread {
 				 							hashCount.get());
 
 				// build answer for the mighty wizards
-				Message messageToWizards = new Message(parentRoomNo, childRoomNo,
+				Message messageToWizards = new Message(parentRoomNo,
+											childRoomNo,
 											decryptedMessage);
 
 				// mark room as solved
@@ -127,5 +130,4 @@ public class Miner extends Thread {
 			}
 		}
 	}
-
 }
