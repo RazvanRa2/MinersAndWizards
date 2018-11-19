@@ -30,12 +30,12 @@ public class Miner extends Thread {
 	 *            communication channel between the miners and the wizards
 	 */
 
-	public static int hashCount;
-	public static ConcurrentHashMap<Integer, Object> solved = new ConcurrentHashMap<>();
-	public static CommunicationChannel channel = new CommunicationChannel();
+	public static int hashCount = -1;
+	public static ConcurrentHashMap<Integer, Object> solved = null;
+	public static CommunicationChannel channel = null;
 
-	private static Semaphore minerSemaphore = new Semaphore(1);
-	private static AtomicInteger minerIndex = new AtomicInteger(0);
+	private static Semaphore minerSemaphore = null;
+	private static AtomicInteger minerIndex = null;
 
 	private boolean didReadParent = false;
 	private int parentRoomNo = -1;
@@ -71,7 +71,17 @@ public class Miner extends Thread {
 	public Miner(Integer newHashCount, Set<Integer> newSolved,
 	CommunicationChannel newChannel) {
 		channel = newChannel;
+
 		hashCount = newHashCount;
+
+		if (minerSemaphore == null)
+			minerSemaphore = new Semaphore(1);
+		
+		if (minerIndex == null)
+			minerIndex = new AtomicInteger(1);
+		
+		if (solved == null)
+			solved = new ConcurrentHashMap<Integer, Object>();
 
 		for (Integer value : newSolved) {
 			solved.putIfAbsent(value, new Object());
@@ -110,16 +120,19 @@ public class Miner extends Thread {
 				parentRoomNo = messageFromWizards.getCurrentRoom();
 				didReadParent = true;
 			} else {
-				minerSemaphore.release();
 				//System.out.println("Read CHILD");
-
-				int childRoomNo = messageFromWizards.getCurrentRoom();
-				String crypticMessage = messageFromWizards.getData();
-
-				channel.putMessageMinerChannel(new Message(parentRoomNo, childRoomNo, 
-						encryptMultipleTimes(crypticMessage, hashCount)));
-
+				minerSemaphore.release();
 				didReadParent = false;
+
+				if (!solved.containsKey(messageFromWizards.getCurrentRoom())) {
+					int childRoomNo = messageFromWizards.getCurrentRoom();
+					String crypticMessage = messageFromWizards.getData();
+
+					channel.putMessageMinerChannel(new Message(parentRoomNo, childRoomNo, 
+							encryptMultipleTimes(crypticMessage, hashCount)));
+
+					solved.put(messageFromWizards.getCurrentRoom(), new Object());
+				}
 			}
 		}
 		System.out.println("Miner " +  minerIndex.incrementAndGet() + " " + Thread.currentThread().getId() + " going home");
