@@ -97,44 +97,33 @@ public class Miner extends Thread {
 
 			Message messageFromWizards = channel.getMessageWizardChannel();
 
-			// we still didn't get a message from the wizards. Wait.
-			if  (messageFromWizards == null) {
-				minerSemaphore.release();
-				continue;
-			}
 			// end message case -> nothing to do. release taken semaphore.
 			if (messageFromWizards.getData() == Wizard.END) {
-				//System.out.println("Read END");
 				minerSemaphore.release();
 				continue;
 			}
+
 			// exit message case=> miner releases semaphore then goes home
 			if (messageFromWizards.getData() == Wizard.EXIT) {
-				//System.out.println("Read EXIT - " + Thread.currentThread().getId());				
 				minerSemaphore.release();
 				break;
 			}
 
 			if (!didReadParent) {  // reading parent room
-				//System.out.println("Read PARENT");
-				parentRoomNo = messageFromWizards.getCurrentRoom();
 				didReadParent = true;
-			} else {
-				//System.out.println("Read CHILD");
+				parentRoomNo = messageFromWizards.getCurrentRoom();
+			} else {  // reading child room
 				minerSemaphore.release();
 				didReadParent = false;
 
 				if (!solved.containsKey(messageFromWizards.getCurrentRoom())) {
-					int childRoomNo = messageFromWizards.getCurrentRoom();
-					String crypticMessage = messageFromWizards.getData();
-
-					channel.putMessageMinerChannel(new Message(parentRoomNo, childRoomNo, 
-							encryptMultipleTimes(crypticMessage, hashCount)));
-
 					solved.put(messageFromWizards.getCurrentRoom(), new Object());
+
+					channel.putMessageMinerChannel(new Message(parentRoomNo, 
+						messageFromWizards.getCurrentRoom(), 
+						encryptMultipleTimes(messageFromWizards.getData(),hashCount)));
 				}
 			}
 		}
-		System.out.println("Miner " +  minerIndex.incrementAndGet() + " " + Thread.currentThread().getId() + " going home");
 	}
 }
