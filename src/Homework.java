@@ -9,8 +9,7 @@ public class Homework {
 
 	public static void main(String[] args) {
 		if (args.length < 4) {
-			System.out
-					.println("Usage: java Homework <caveInfoPath> <numberOfHashes> <numberOfWizards> <numberOfMiners>");
+			System.out.println("Usage: java Homework <caveInfoPath> <numberOfHashes> <numberOfWizards> <numberOfMiners>");
 			System.exit(1);
 		}
 
