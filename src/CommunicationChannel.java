@@ -1,7 +1,5 @@
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.*;
 import java.util.LinkedList;
-import java.lang.*;
 import java.util.concurrent.Semaphore;
 
 /**
@@ -16,16 +14,20 @@ public class CommunicationChannel {
 	ConcurrentLinkedQueue<Message> wizardChannel;
 
 	static ConcurrentHashMap<Integer, LinkedList<Message>> wizardMessages;
-	static Semaphore wizardChannelSemaphore;
-	static long lastThread;
+	static Semaphore nextMessageSemaphore;
+	static Semaphore endExitSemaphore;
+	static long lastThread = -1;
 	public CommunicationChannel() {
-		minerChannel = new ConcurrentLinkedQueue<Message>();
-		wizardChannel = new ConcurrentLinkedQueue<Message>();
-
-		wizardMessages =  new ConcurrentHashMap<Integer, LinkedList<Message>>();
-		wizardChannelSemaphore = new Semaphore(1);
-
-		lastThread = -1;
+		if (minerChannel == null)
+			minerChannel = new ConcurrentLinkedQueue<Message>();
+		if (wizardChannel == null)
+			wizardChannel = new ConcurrentLinkedQueue<Message>();
+		if (wizardMessages == null)
+			wizardMessages =  new ConcurrentHashMap<Integer, LinkedList<Message>>();
+		if (nextMessageSemaphore == null)
+			nextMessageSemaphore = new Semaphore(1);
+		if (endExitSemaphore == null)
+			endExitSemaphore = new Semaphore(1);
 	}
 
 	/**
@@ -36,7 +38,7 @@ public class CommunicationChannel {
 	 *            message to be put on the channel
 	 */
 	public void putMessageMinerChannel(Message message) {
-		System.out.println("minner channel: " + message.getData());
+		//System.out.println("minner channel: " + message.getData());
 		minerChannel.add(message);
 	}
 
@@ -47,12 +49,7 @@ public class CommunicationChannel {
 	 * @return message from the miner channel
 	 */
 	public Message getMessageMinerChannel() {
-		Message messageFromMiners = null;
-		do {
-			messageFromMiners = minerChannel.poll();
-		} while (messageFromMiners == null);
-
-		return messageFromMiners;
+		return minerChannel.poll();
 	}
 
 	/**
@@ -63,28 +60,26 @@ public class CommunicationChannel {
 	 *            message to be put on the channel
 	 */
 	public void putMessageWizardChannel(Message message) {
-		if (message.getData() != Wizard.EXIT
-		&& message.getData() != Wizard.END) {
-			long currentThread = Thread.currentThread().getId();
-			if (currentThread == lastThread || lastThread == -1) {
+		long currentThread = Thread.currentThread().getId();
+
+		if (message.getData() != Wizard.EXIT && message.getData() != Wizard.END) {
+			if (currentThread == lastThread) {
 				wizardChannel.add(message);
-				lastThread = -1;
+				nextMessageSemaphore.release();
 			} else {
 				try {
-					wizardChannelSemaphore.acquire();
-					wizardChannel.add(message);
-					lastThread = Thread.currentThread().getId();
+					nextMessageSemaphore.acquire();
+					endExitSemaphore.acquire();
 				} catch (Exception ex) {
 				}
-				wizardChannelSemaphore.release();
+
+				wizardChannel.add(message);
+				lastThread = currentThread;
 			}
 		} else {
-			try {
-				wizardChannelSemaphore.acquire();
-			} catch (Exception ex) {
-			}
 			wizardChannel.add(message);
-			wizardChannelSemaphore.release();
+			nextMessageSemaphore.release();
+			endExitSemaphore.release();
 		}
 	}
 
@@ -98,8 +93,8 @@ public class CommunicationChannel {
 		Message messageFromWizards = null;
 		do {
 			messageFromWizards = wizardChannel.poll();
-		} while (messageFromWizards == null);
-
+		} while(messageFromWizards == null);
+		
 		return messageFromWizards;
 	}
 }
