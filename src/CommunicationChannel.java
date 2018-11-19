@@ -10,13 +10,14 @@ public class CommunicationChannel {
 	 * Creates a {@code CommunicationChannel} object.
 	 */
 
-	ConcurrentLinkedQueue<Message> minerChannel;
-	ConcurrentLinkedQueue<Message> wizardChannel;
+	static ConcurrentLinkedQueue<Message> minerChannel;
+	static ConcurrentLinkedQueue<Message> wizardChannel;
 
 	static ConcurrentHashMap<Integer, LinkedList<Message>> wizardMessages;
 	static Semaphore nextMessageSemaphore;
 	static Semaphore endExitSemaphore;
 	static long lastThread = -1;
+	
 	public CommunicationChannel() {
 		if (minerChannel == null)
 			minerChannel = new ConcurrentLinkedQueue<Message>();
