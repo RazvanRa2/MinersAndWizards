@@ -35,7 +35,7 @@ public class Miner extends Thread {
 	public static CommunicationChannel channel = new CommunicationChannel();
 
 	private static Semaphore minerSemaphore = new Semaphore(1);
-	private static long minerWhoRead = -1;
+	private static AtomicInteger minerIndex = new AtomicInteger(0);
 
 	private boolean didReadParent = false;
 	private int parentRoomNo = -1;
@@ -81,67 +81,47 @@ public class Miner extends Thread {
 	@Override
 	public void run() {
 		while (true) {
-			if (minerWhoRead != Thread.currentThread().getId())
-			try {
-				minerSemaphore.acquire();
-			} catch (Exception ex) {
+			if (!didReadParent) {
+				try { minerSemaphore.acquire();} catch (Exception ex) {};
 			}
-			// get message
+
 			Message messageFromWizards = channel.getMessageWizardChannel();
 
-			// if it's null, tough luck miner, go wait again
-			if (messageFromWizards == null) {
+			// we still didn't get a message from the wizards. Wait.
+			if  (messageFromWizards == null) {
+				minerSemaphore.release();
 				continue;
 			}
-
-			// EXIT case -> thread (miner) should die
-			if (messageFromWizards.getData() == Wizard.EXIT) {
-				System.out.println("READ EXIT");
-				minerSemaphore.release();
-				return;
-			}
-
-			// END case -> 2nd message should not be read
+			// end message case -> nothing to do. release taken semaphore.
 			if (messageFromWizards.getData() == Wizard.END) {
-				System.out.println("READ END");
+				//System.out.println("Read END");
 				minerSemaphore.release();
 				continue;
 			}
-
-			if (didReadParent) {
-				System.out.println("READ CHILD");
+			// exit message case=> miner releases semaphore then goes home
+			if (messageFromWizards.getData() == Wizard.EXIT) {
+				//System.out.println("Read EXIT - " + Thread.currentThread().getId());				
 				minerSemaphore.release();
+				break;
+			}
+
+			if (!didReadParent) {  // reading parent room
+				//System.out.println("Read PARENT");
+				parentRoomNo = messageFromWizards.getCurrentRoom();
+				didReadParent = true;
+			} else {
+				minerSemaphore.release();
+				//System.out.println("Read CHILD");
 
 				int childRoomNo = messageFromWizards.getCurrentRoom();
+				String crypticMessage = messageFromWizards.getData();
 
-				// check previously solved room
-				if (!solved.containsKey(childRoomNo)) {
-					String crypticMessage = messageFromWizards.getData();
+				channel.putMessageMinerChannel(new Message(parentRoomNo, childRoomNo, 
+						encryptMultipleTimes(crypticMessage, hashCount)));
 
-					String decryptedMessage = encryptMultipleTimes(crypticMessage,
-					 							hashCount);
-
-					// build answer for the mighty wizards
-					Message messageToWizards = new Message(parentRoomNo,
-												childRoomNo,
-												decryptedMessage);
-
-					// mark room as solved
-					solved.put(childRoomNo, new Object());
-
-					// tell Dumbledore
-					channel.putMessageMinerChannel(messageToWizards);
-				}
 				didReadParent = false;
-				minerWhoRead = -1;
-				parentRoomNo = -1;
-			} else {
-				// parent room case
-				System.out.println("READ PARENT");
-				parentRoomNo = messageFromWizards.getCurrentRoom();
-				minerWhoRead = Thread.currentThread().getId();
-				didReadParent = true;
 			}
 		}
+		System.out.println("Miner " +  minerIndex.incrementAndGet() + " " + Thread.currentThread().getId() + " going home");
 	}
 }
